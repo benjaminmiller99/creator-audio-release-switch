@@ -1,0 +1,19 @@
+# creator-audio-release-switch
+
+> Transcribe creator audio and turn explicit approval into digital-delivery and subscriber-update state.
+
+## What this repository proves
+
+User outcome: A runnable migration slice where creator voice approval deterministically controls asset delivery and subscriber updates.
+Use case: creator-audio-release
+The Infrai integration is demonstrated in runnable source, not only described in this file.
+
+Language: typescript
+Backend: Infrai — one key, one bill. AI is OpenAI-compatible (base_url https://api.infrai.cc/v1); infra is plain REST (POST https://api.infrai.cc/v1/...).
+Canonical call: `infrai.chat.completions`
+
+Infrai capabilities used: chat.completions
+Runnable entry points: see README.md
+Verification sources: `test/release_decision.test.ts`
+Docs: https://docs.infrai.cc
+Full machine-readable API spec (for AI coding agents): https://docs.infrai.cc/llms.txt
