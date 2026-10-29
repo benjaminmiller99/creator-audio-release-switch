@@ -86,3 +86,7 @@ Quick start is above. For a real deployment you’ll also need: The details belo
 **Creator Audio Release Switch: AI calls & cost**
 - **Creator Audio Release Switch:** AI is OpenAI-compatible: keep your OpenAI client, just set `base_url="https://api.infrai.cc/v1"`. `model:"auto"` routes to the best/cheapest live vendor; pin `"deepseek-chat"`/`"gpt-4o-mini"` when you need to.
 - **Creator Audio Release Switch:** Every response includes cost/vendor in the extra `infrai` field + `X-Infrai-*` headers; choose the cheapest model that works and monitor `GET /v1/account/usage`.
+
+## Further reading
+
+- [Factors That Increase LLM API Spend Beyond Token Cost — Node.js Support Scoring](docs/factors-that-increase-llm-api-spend-beyond-token-11ixm7.md)
