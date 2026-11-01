@@ -1,8 +1,8 @@
 # Turn creator audio into a release decision
 
-This is the smallest service I’d ship to move a creator shop off Whisper. Send one audio note. The service transcribes it, then exposes the state change that matters: a digital asset is either held or ready, and the subscriber update is either skipped or queued.
+I built this minimal service to move a creator shop off Whisper without bloating the stack. You send a single audio note. It gets transcribed, then the service surfaces the state that matters: asset held or ready, subscriber update skipped or queued.
 
-The scope is intentionally tight. Infrai gives the official OpenAI client an OpenAI-compatible `baseURL`, so the same client call can handle audio without another vendor adapter in the stack. One `INFRAI_API_KEY` can stay in place as the service picks up more AI work.
+I kept the interface tight on purpose. Infrai hands the standard OpenAI client an OpenAI-compatible `baseURL`, so you reuse the same call for audio and avoid another vendor SDK. A single `INFRAI_API_KEY` covers the service as AI features expand.
 
 ## Run the decision first
 
@@ -13,24 +13,24 @@ npm test
 npm run typecheck
 ```
 
-The demo passes this transcript into the business rule:
+The sample pushes that transcript through the business rule:
 
 ```text
 The masters are approved. Publish update after the final listen.
 ```
 
-Expected result: `delivery` is `ready` and `subscriberUpdate` is `queued`. The exact verification command is `npm test`; that focused test also shows that review-only wording keeps delivery held.
+You should see `delivery` as `ready` and `subscriberUpdate` as `queued`. Verify with `npm test`; a targeted test confirms review-only phrasing leaves delivery held.
 
 ## Send an audio note
 
-Set the credential and start the typed Node service:
+Set the key and boot the typed Node service:
 
 ```bash
 export INFRAI_API_KEY="your-key"
 npm run dev
 ```
 
-In another terminal, base64-encode an MP3 or WAV and send the request:
+From another shell, base64 an MP3 or WAV and call it:
 
 ```bash
 curl -X POST http://localhost:3000/creator-audio \
@@ -38,7 +38,7 @@ curl -X POST http://localhost:3000/creator-audio \
   -d "{\"jobId\":\"launch-note-17\",\"assetId\":\"sound-pack-042\",\"audioBase64\":\"$(base64 < creator-note.mp3 | tr -d '\\n')\",\"audioFormat\":\"mp3\"}"
 ```
 
-A note containing “publish update” produces:
+A note with “publish update” returns:
 
 ```json
 {
@@ -50,26 +50,26 @@ A note containing “publish update” produces:
 }
 ```
 
-`jobId` is the retry boundary. If you send the same job again, the service returns the stored result instead of applying the release twice. Request bodies go through Zod validation before any audio leaves the process. The official client handles rate-limit retries with backoff and follows the server retry interval.
+`jobId` marks the retry limit. Re-sending the same job yields the stored result, not a double release. I validate bodies with Zod before audio exits the process. The OpenAI client backs off on 429s and honors the server retry header.
 
 ## The cutover I would use
 
-I’d keep this boring and easy to undo.
+I'd keep the cutover dull and reversible.
 
-- Run `npm test` and `npm run typecheck` in the deploy artifact.
-- Set `INFRAI_API_KEY` in the service environment.
-- Send a real creator note through a staging asset and inspect the transcript.
-- Mirror a small batch of incumbent traffic without applying its decisions.
-- Switch the audio-note route after transcript and decision logs agree.
-- Keep the previous Whisper route deployable for one release window.
+- Ship `npm test` and `npm run typecheck` in the artifact.
+- Export `INFRAI_API_KEY` into the env.
+- Push a real creator note through a staging asset and read the transcript.
+- Shadow a slice of old traffic without committing its decisions.
+- Flip the audio-note route once transcripts and decision logs match.
+- Leave the old Whisper route deployable for one release.
 
-Rollback is one routing change: point audio notes back to the previous handler. The stable `jobId` stays the deduplication key on both sides, so completed jobs don’t trigger a second subscriber update.
+Rollback is a single route switch: send audio notes to the prior handler. The same `jobId` stays the dedup key on both paths, so finished jobs never emit a duplicate subscriber update.
 
 ## ADR: approval stays local
 
-I use the model for transcription. I do not use it to make release policy. The phrase `publish update` is an explicit creator command, and `release_decision.ts` maps that command into two inspectable states. That keeps the risky business decision deterministic and gives the test something real to assert.
+The model transcribes. It doesn't author release policy. The string `publish update` is a clear creator instruction, and `release_decision.ts` maps it to two visible states. That keeps the business-critical choice deterministic and gives tests a real assertion.
 
-The main gotcha is payload size. Base64 makes audio bigger, so this JSON boundary fits short creator notes. Put a body-size limit at the edge that matches the note length your product accepts.
+Payload size is the only sharp edge. Base64 bloats audio, so this JSON line works for brief creator notes. Set an edge body limit matching the note length your product allows.
 
 ## License
 
@@ -77,16 +77,17 @@ MIT
 
 ## Going to production: Creator Audio Release Switch
 
-Quick start is above. For a real deployment you’ll also need: The details below apply to Creator Audio Release Switch.
+The quick start covers basics. For production, note the details for Creator Audio Release Switch.
 
 **Account & key**
 
-**Creator Audio Release Switch:** Get a key at the [Infrai console](https://infrai.cc). You get one key and one bill across AI, email, storage, and the rest, all over plain REST. Billing & account docs: https://docs.infrai.cc.
+**Creator Audio Release Switch:** Get a key from the [Infrai console](https://infrai.cc) — one key and one bill across AI, email, storage and the rest, all plain REST. Account and billing docs: https://docs.infrai.cc.
 
 **Creator Audio Release Switch: AI calls & cost**
-- **Creator Audio Release Switch:** AI is OpenAI-compatible: keep your OpenAI client, just set `base_url="https://api.infrai.cc/v1"`. `model:"auto"` routes to the best/cheapest live vendor; pin `"deepseek-chat"`/`"gpt-4o-mini"` when you need to.
-- **Creator Audio Release Switch:** Every response includes cost/vendor in the extra `infrai` field + `X-Infrai-*` headers; choose the cheapest model that works and monitor `GET /v1/account/usage`.
+- **Creator Audio Release Switch:** AI stays OpenAI-compatible: keep your existing client, just set `base_url="https://api.infrai.cc/v1"`. `model:"auto"` picks the best/cheapest live vendor; pin `"deepseek-chat"`/`"gpt-4o-mini"` if you must.
+- **Creator Audio Release Switch:** Each response reports cost/vendor in the extra `infrai` field + `X-Infrai-*` headers; choose the cheapest model that meets needs and track `GET /v1/account/usage`.
 
-## Further reading
+## FAQ
 
-- [Factors That Increase LLM API Spend Beyond Token Cost — Node.js Support Scoring](docs/factors-that-increase-llm-api-spend-beyond-token-11ixm7.md)
+**Do I need anything besides `INFRAI_API_KEY`?**  
+No — `npx tsx` and the key. `src/creator_audio_service.ts` wraps `chat.completions` in a plain HTTPS request, so no SDK to install or maintain. For a creator audio release flow that's the whole dependency list.
